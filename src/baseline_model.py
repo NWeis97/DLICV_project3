@@ -100,7 +100,7 @@ class ISIC(torch.utils.data.Dataset):
 
 # Define loss
 def bce_loss(y_real, y_pred):
-    y_pred = torch.clamp(y_pred,min=-1e3,max=1e3)
+    y_pred = torch.clamp(y_pred,min=-80,max=80)
     return torch.mean(y_pred - y_real*y_pred +
                       torch.where(y_pred>37, torch.exp(-y_pred), torch.zeros_like(y_pred)) +
                       torch.where((y_pred<=37) & (y_pred >-18), torch.log1p(torch.exp(-y_pred)), torch.zeros_like(y_pred)) +
