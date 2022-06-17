@@ -33,9 +33,10 @@ print(device)
 
 # ISIC dataloader
 class ISIC(torch.utils.data.Dataset):
-    def __init__(self, data_type, transform_resize, transform, data_path, seed=1234):
+    def __init__(self, data_type, transform_resize, transform, data_path, crop_x, seed=1234):
         'Initialization'
         self.transform = transform
+        self.crop_x = crop_x
         self.transform_resize = transform_resize
         self.data_type = data_type
         self.seed = seed
@@ -85,8 +86,13 @@ class ISIC(torch.utils.data.Dataset):
             Y = self.transform_resize(seg)
         else:
             Y = self.transform(seg)
-        image = transforms.functional.crop(image,36,114,image.size[1]-36-37,image.size[0]-114-102)
-        X = self.transform_resize(image)
+        
+        if self.crop_x is True:
+            image = transforms.functional.crop(image,36,114,image.size[1]-36-37,image.size[0]-114-102)
+            X = self.transform_resize(image)
+        else:
+            X = self.transform(image)
+
         return X, Y
 
 # Define loss

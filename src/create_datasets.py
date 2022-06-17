@@ -12,8 +12,9 @@ import torch
 torch.manual_seed(1234)
 
 # Set path of data you want to load
-name = 'train_allstyles'
-data_type = 'train'
+name = 'train_style0'
+data_type = 'val'
+crop_x = True
 
 data_path = './data/' + name
 
@@ -29,9 +30,10 @@ transform = transforms.Compose([transforms.ToTensor()])
 
 # ISIC dataloader
 class ISIC(torch.utils.data.Dataset):
-    def __init__(self, data_type, transform_resize, transform, data_path, seed=1234):
+    def __init__(self, data_type, transform_resize, transform, data_path, crop_x, seed=1234):
         'Initialization'
         self.transform = transform
+        self.crop_x = crop_x
         self.transform_resize = transform_resize
         self.data_type = data_type
         self.seed = seed
@@ -81,12 +83,17 @@ class ISIC(torch.utils.data.Dataset):
             Y = self.transform_resize(seg)
         else:
             Y = self.transform(seg)
-        image = transforms.functional.crop(image,36,114,image.size[1]-36-37,image.size[0]-114-102)
-        X = self.transform_resize(image)
+        
+        if self.crop_x is True:
+            image = transforms.functional.crop(image,36,114,image.size[1]-36-37,image.size[0]-114-102)
+            X = self.transform_resize(image)
+        else:
+            X = self.transform(image)
+
         return X, Y
 
 # Load data
-dataset = ISIC( transform_resize=transform_resize, transform=transform, data_type=data_type, data_path=data_path)
+dataset = ISIC( transform_resize=transform_resize, transform=transform, data_type=data_type, data_path=data_path, crop_x = crop_x)
 dataset.__getitem__(0)
 torch.save(dataset,'./datasets/'+name+'-datatype_'+data_type+'.pt')
 print('Saved train dataset')
