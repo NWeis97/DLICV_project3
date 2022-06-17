@@ -85,7 +85,7 @@ class ISIC(torch.utils.data.Dataset):
             Y = self.transform_resize(seg)
         else:
             Y = self.transform(seg)
-        X = transforms.functional.crop(image,36,114,seg.size[1]-36-37,seg.size[0]-114-102)
+        image = transforms.functional.crop(image,36,114,image.size[1]-36-37,image.size[0]-114-102)
         X = self.transform_resize(image)
         return X, Y
 
@@ -216,7 +216,7 @@ train_loader = DataLoader(train_dataset, batch_size=16, shuffle=True, num_worker
 val_loader = DataLoader(val_dataset, batch_size=16, shuffle=True, num_workers=0)
 
 # Load test data
-test_dataset = torch.load('datasets/test_style0.pt')
+test_dataset = torch.load('datasets/test_style0-datatype_test.pt')
 test_loader = DataLoader(test_dataset, batch_size=16, shuffle=False, num_workers=0)
 
 ## Train 
