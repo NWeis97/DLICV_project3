@@ -56,7 +56,7 @@ class ISIC(torch.utils.data.Dataset):
             self.seg_paths = seg_paths
         
         
-        if (data_type == 'train') | (data_type == 'val'):
+        if (self.data_type == 'train') | (self.data_type == 'val'):
             for image_path in image_paths:
                 image_name = image_path.split("/")[-1][:-4]
                 all_seg_per_image = [seg for seg in seg_paths if seg.split("/")[-1][:len(image_name)]==image_name]
@@ -77,7 +77,7 @@ class ISIC(torch.utils.data.Dataset):
         
         image = Image.open(image_path)
         seg = Image.open(seg_path)
-        if data_type == 'test':
+        if self.data_type == 'test':
             Y = self.transform_crop_resize(seg)
         else:
             Y = self.transform(seg)
