@@ -12,17 +12,18 @@ import torch
 torch.manual_seed(1234)
 
 # Set path of data you want to load
-name = 'train_style2'
-data_type = 'val'
+name = 'train_style0'
+data_type = 'train'
 
 data_path = './data/' + name
 
 
 
 # Transform images
-size = 256
-transform = transforms.Compose([transforms.Resize((size, size)), 
-                                      transforms.ToTensor()])
+size = 256 
+transform = transforms.Compose([transforms.CenterCrop((215, 215)),
+                                transforms.Resize((size, size)), 
+                                transforms.ToTensor()])
 
 
 # ISIC dataloader
