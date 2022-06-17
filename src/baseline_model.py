@@ -50,9 +50,9 @@ class ISIC(torch.utils.data.Dataset):
         rand_perm = np.random.permutation(np.arange(0,num_images,1))
         rand_perm = rand_perm[:int(0.7*num_images)]
 
-        if data_type == 'train':
+        if self.data_type == 'train':
             image_paths = np.array(image_paths)[rand_perm].tolist()
-        elif data_type == 'val':
+        elif self.data_type == 'val':
             image_paths = np.array(image_paths)[[x for x in np.arange(0,num_images,1) if x not in rand_perm]].tolist()
         else:
             self.image_paths = image_paths
