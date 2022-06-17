@@ -12,8 +12,8 @@ import torch
 torch.manual_seed(1234)
 
 # Set path of data you want to load
-name = 'test_style0'
-data_type = 'test'
+name = 'train_allstyles'
+data_type = 'train'
 
 data_path = './data/' + name
 
