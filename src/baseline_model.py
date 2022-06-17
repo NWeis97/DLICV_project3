@@ -32,6 +32,28 @@ torch.manual_seed(seed)
 device = torch.device('cuda' if torch.cuda.is_available() else 'cpu')
 print(device)
 
+class ISIC(torch.utils.data.Dataset):
+    def __init__(self, transform, data_path):
+        'Initialization'
+        self.transform = transform
+        self.image_paths = sorted(glob.glob(data_path + '/Images/*.jpg'))
+        self.seg_paths = sorted(glob.glob(data_path + '/Segmentations/*.png'))
+        
+    def __len__(self):
+        'Returns the total number of samples'
+        return len(self.image_paths)
+
+    def __getitem__(self, idx):
+        'Generates one sample of data'
+        image_path = self.image_paths[idx]
+        seg_path = self.seg_paths[idx]
+        
+        image = Image.open(image_path)
+        seg = Image.open(seg_path)
+        Y = self.transform(seg)
+        X = self.transform(image)
+        return X, Y
+
 # Define loss
 def bce_loss(y_real, y_pred):
     y_pred = torch.clamp(y_pred,min=-1e3,max=1e3)
@@ -73,8 +95,8 @@ def train(model, opt, loss_fn, epochs, train_loader, test_loader):
 
         # show intermediate results
         model.eval()  # testing mode
-        Y_hat = F.sigmoid(model(X_test.to(device))).detach().cpu()
-        print('Y hat shape:',Y_hat.shape)
+        Y_hat = torch.sigmoid(model(X_test.to(device))).detach().cpu()
+        #print('Y hat shape:',Y_hat.shape)
         clear_output(wait=True)
         for k in range(6):
             plt.subplot(2, 6, k+1)
@@ -119,8 +141,10 @@ class UNet(nn.Module):
         self.dec_conv1 = nn.Conv2d(64*2, 64, 3, padding=1)
         self.upsample2 = nn.Upsample(64)  # 32 -> 64
         self.dec_conv2 = nn.Conv2d(64*2, 64, 3, padding=1)
-        self.upsample3 = nn.Upsample(128)  # 64 -> 128
-        self.dec_conv3 = nn.Conv2d(64*2, 1, 3, padding=1)
+        self.upsample3 = nn.Upsample(128)  # 32 -> 64
+        self.dec_conv3 = nn.Conv2d(64*2, 64, 3, padding=1)
+        self.upsample4 = nn.Upsample(256)  # 64 -> 128
+        self.dec_conv4 = nn.Conv2d(64*2, 1, 3, padding=1)
 
     def forward(self, x):
         # encoder
@@ -133,16 +157,16 @@ class UNet(nn.Module):
         b = F.relu(self.bottleneck_conv(e3))
 
         # decoder
-        pdb.set_trace()
+        #pdb.set_trace()
         d0 = F.relu(self.dec_conv0(self.upsample0(b)))
         d0 = torch.cat([d0,e3],dim=1)
         d1 = F.relu(self.dec_conv1(self.upsample1(d0)))
         d1 = torch.cat([d1,e2],dim=1)
         d2 = F.relu(self.dec_conv2(self.upsample2(d1)))
         d2 = torch.cat([d2,e1],dim=1)
-        d3 = F.relu(self.dec_conv2(self.upsample2(d2)))
+        d3 = F.relu(self.dec_conv3(self.upsample3(d2)))
         d3 = torch.cat([d3,e0],dim=1)
-        d4 = self.dec_conv3(self.upsample3(d3))  # no activation
+        d4 = self.dec_conv4(self.upsample4(d3))  # no activation
         return d4
 
 # load model and visualize
@@ -161,5 +185,5 @@ test_dataset = torch.load('datasets/test_style0.pt')
 test_loader = DataLoader(test_dataset, batch_size=16, shuffle=False, num_workers=0)
 
 ## Train 
-#torch.cuda.empty_cache()
-#train(model, optim.Adam(model.parameters()), bce_loss, 20, train_loader, test_loader)
+torch.cuda.empty_cache()
+train(model, optim.Adam(model.parameters()), bce_loss, 20, train_loader, test_loader)
