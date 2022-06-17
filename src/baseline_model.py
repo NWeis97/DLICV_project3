@@ -28,7 +28,12 @@ print(device)
 # Define loss
 def bce_loss(y_real, y_pred):
     y_pred = torch.clamp(y_pred,min=-1e3,max=1e3)
-    return torch.mean(y_pred - y_real*y_pred + torch.log(1 + torch.exp(-y_pred)))
+    return torch.mean(y_pred - y_real*y_pred +
+                      torch.where(y_pred>37, torch.exp(-y_pred), torch.zeros_like(y_pred)) +
+                      torch.where((y_pred<=37) & (y_pred >-18), torch.log1p(torch.exp(-y_pred)), torch.zeros_like(y_pred)) +
+                      torch.where((y_pred>-33.3) & (y_pred <=-18),torch.exp(y_pred) - y_pred,torch.zeros_like(y_pred)) + 
+                      torch.where(y_pred<=-33.3, -y_pred, torch.zeros_like(y_pred))
+                      )
 
 
 # Train procedure as function
