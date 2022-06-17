@@ -16,6 +16,13 @@ from time import time
 import matplotlib.pyplot as plt
 from IPython.display import clear_output
 from torchviz import make_dot
+import pdb
+from torch.utils.data import random_split
+
+
+# Set seed
+seed = 1234
+torch.manual_seed(seed)
 
 
 ### DATA
@@ -117,8 +124,7 @@ class UNet(nn.Module):
 
     def forward(self, x):
         # encoder
-        e0 = self.pool0(F.relu(self.enc_conv0(x)))
-        print(e0.shape)        
+        e0 = self.pool0(F.relu(self.enc_conv0(x)))       
         e1 = self.pool1(F.relu(self.enc_conv1(e0)))
         e2 = self.pool2(F.relu(self.enc_conv2(e1)))
         e3 = self.pool3(F.relu(self.enc_conv3(e2)))
@@ -127,22 +133,33 @@ class UNet(nn.Module):
         b = F.relu(self.bottleneck_conv(e3))
 
         # decoder
+        pdb.set_trace()
         d0 = F.relu(self.dec_conv0(self.upsample0(b)))
-        print(d0.shape)
-        print(e3.shape)
-        d0 = torch.cat([d0,e2],dim=1)
+        d0 = torch.cat([d0,e3],dim=1)
         d1 = F.relu(self.dec_conv1(self.upsample1(d0)))
-        d1 = torch.cat([d1,e1],dim=1)
+        d1 = torch.cat([d1,e2],dim=1)
         d2 = F.relu(self.dec_conv2(self.upsample2(d1)))
-        d2 = torch.cat([d2,e0],dim=1)
-        d3 = self.dec_conv3(self.upsample3(d2))  # no activation
-        return d3
+        d2 = torch.cat([d2,e1],dim=1)
+        d3 = F.relu(self.dec_conv2(self.upsample2(d2)))
+        d3 = torch.cat([d3,e0],dim=1)
+        d4 = self.dec_conv3(self.upsample3(d3))  # no activation
+        return d4
 
 # load model and visualize
 model = UNet().to(device)
 make_dot(model(torch.randn(20, 3, 256, 256).cuda()), params=dict(model.named_parameters()))
 
+# Load training data
+dataset = torch.load('datasets/train_allstyles.pt')
+train_length = int(0.70*dataset.__len__())
+train_dataset, val_dataset = random_split(dataset, [train_length,dataset.__len__()-train_length], generator=torch.Generator().manual_seed(seed))
+train_loader = DataLoader(train_dataset, batch_size=16, shuffle=True, num_workers=0)
+val_loader = DataLoader(val_dataset, batch_size=16, shuffle=True, num_workers=0)
 
-# Train 
-torch.cuda.empty_cache()
-train(model, optim.Adam(model.parameters()), bce_loss, 20, train_loader, test_loader)
+# Load test data
+test_dataset = torch.load('datasets/test_style0.pt')
+test_loader = DataLoader(test_dataset, batch_size=16, shuffle=False, num_workers=0)
+
+## Train 
+#torch.cuda.empty_cache()
+#train(model, optim.Adam(model.parameters()), bce_loss, 20, train_loader, test_loader)
