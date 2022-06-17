@@ -65,6 +65,14 @@ def bce_loss(y_real, y_pred):
 
 
 # Train procedure as function
+sizes_style0_pred = []
+sizes_style1_pred = []
+sizes_style2_pred = []
+sizes_style0_true = []
+sizes_style1_true = []
+sizes_style2_true = []
+
+
 def train(model, opt, loss_fn, epochs, train_loader, test_loader):
     X_test, Y_test = next(iter(test_loader))
 
@@ -95,7 +103,9 @@ def train(model, opt, loss_fn, epochs, train_loader, test_loader):
         # show intermediate results
         model.eval()  # testing mode
         Y_hat = torch.sigmoid(model(X_test.to(device))).detach().cpu()
-        #print('Y hat shape:',Y_hat.shape)
+        sizes_style0_pred.append(Y_hat.sum)
+        sizes_style0_true.append(Y_test.sum)
+        print('Y hat shape:',Y_hat.shape)
         clear_output(wait=True)
         for k in range(6):
             plt.subplot(2, 6, k+1)
