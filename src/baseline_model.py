@@ -31,12 +31,43 @@ plt.rcParams['figure.figsize'] = [22, 7]
 device = torch.device('cuda' if torch.cuda.is_available() else 'cpu')
 print(device)
 
+# ISIC dataloader
 class ISIC(torch.utils.data.Dataset):
-    def __init__(self, transform, data_path):
+    def __init__(self, data_type, transform_crop_resize, transform, data_path, seed=1234):
         'Initialization'
         self.transform = transform
-        self.image_paths = sorted(glob.glob(data_path + '/Images/*.jpg'))
-        self.seg_paths = sorted(glob.glob(data_path + '/Segmentations/*.png'))
+        self.transform_crop_resize = transform_crop_resize
+        self.data_type = data_type
+        self.seed = seed
+        self.image_paths = []
+        self.seg_paths = []
+        image_paths = sorted(glob.glob(data_path + '/Images/*.jpg'))
+        seg_paths = sorted(glob.glob(data_path + '/Segmentations/*.png'))
+
+        # Random permutation
+        num_images = len(image_paths)
+        np.random.seed(self.seed)
+        rand_perm = np.random.permutation(np.arange(0,num_images,1))
+        rand_perm = rand_perm[:int(0.7*num_images)]
+
+        if data_type == 'train':
+            image_paths = np.array(image_paths)[rand_perm].tolist()
+        elif data_type == 'val':
+            image_paths = np.array(image_paths)[[x for x in np.arange(0,num_images,1) if x not in rand_perm]].tolist()
+        else:
+            self.image_paths = image_paths
+            self.seg_paths = seg_paths
+        
+        
+        if (data_type == 'train') | (data_type == 'val'):
+            for image_path in image_paths:
+                image_name = image_path.split("/")[-1][:-4]
+                all_seg_per_image = [seg for seg in seg_paths if seg.split("/")[-1][:len(image_name)]==image_name]
+                num_seg_per_image = len(all_seg_per_image)
+
+                self.image_paths.extend([image_path]*num_seg_per_image)
+                self.seg_paths.extend(all_seg_per_image)
+
         
     def __len__(self):
         'Returns the total number of samples'
@@ -49,8 +80,11 @@ class ISIC(torch.utils.data.Dataset):
         
         image = Image.open(image_path)
         seg = Image.open(seg_path)
-        Y = self.transform(seg)
-        X = self.transform(image)
+        if data_type == 'test':
+            Y = self.transform_crop_resize(seg)
+        else:
+            Y = self.transform(seg)
+        X = self.transform_crop_resize(image)
         return X, Y
 
 # Define loss

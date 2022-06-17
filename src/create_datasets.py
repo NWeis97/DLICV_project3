@@ -34,6 +34,8 @@ class ISIC(torch.utils.data.Dataset):
         'Initialization'
         self.transform = transform
         self.transform_crop_resize = transform_crop_resize
+        self.data_type = data_type
+        self.seed = seed
         self.image_paths = []
         self.seg_paths = []
         image_paths = sorted(glob.glob(data_path + '/Images/*.jpg'))
@@ -41,6 +43,7 @@ class ISIC(torch.utils.data.Dataset):
 
         # Random permutation
         num_images = len(image_paths)
+        np.random.seed(self.seed)
         rand_perm = np.random.permutation(np.arange(0,num_images,1))
         rand_perm = rand_perm[:int(0.7*num_images)]
 
