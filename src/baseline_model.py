@@ -174,9 +174,8 @@ model = UNet().to(device)
 make_dot(model(torch.randn(20, 3, 256, 256).cuda()), params=dict(model.named_parameters()))
 
 # Load training data
-dataset = torch.load('datasets/train_allstyles.pt')
-train_length = int(0.70*dataset.__len__())
-train_dataset, val_dataset = random_split(dataset, [train_length,dataset.__len__()-train_length], generator=torch.Generator().manual_seed(seed))
+train_dataset = torch.load('datasets/train_allstyles-datatype_train.pt')
+val_dataset = torch.load('datasets/train_allstyles-datatype_val.pt')
 train_loader = DataLoader(train_dataset, batch_size=16, shuffle=True, num_workers=0)
 val_loader = DataLoader(val_dataset, batch_size=16, shuffle=True, num_workers=0)
 
