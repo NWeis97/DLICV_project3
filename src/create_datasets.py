@@ -12,7 +12,7 @@ import torch
 torch.manual_seed(1234)
 
 # Set path of data you want to load
-name = 'train_allstyles'
+name = 'train_style0'
 data_type = 'train'
 
 data_path = './data/' + name
@@ -21,8 +21,7 @@ data_path = './data/' + name
 
 # Transform images
 size = 256 
-transform_crop_resize = transforms.Compose([transforms.CenterCrop((215, 215)),
-                                transforms.Resize((size, size)), 
+transform_resize = transforms.Compose([transforms.Resize((size, size)), 
                                 transforms.ToTensor()])
 
 transform = transforms.Compose([transforms.ToTensor()])
@@ -30,10 +29,10 @@ transform = transforms.Compose([transforms.ToTensor()])
 
 # ISIC dataloader
 class ISIC(torch.utils.data.Dataset):
-    def __init__(self, data_type, transform_crop_resize, transform, data_path, seed=1234):
+    def __init__(self, data_type, transform_resize, transform, data_path, seed=1234):
         'Initialization'
         self.transform = transform
-        self.transform_crop_resize = transform_crop_resize
+        self.transform_resize = transform_resize
         self.data_type = data_type
         self.seed = seed
         self.image_paths = []
@@ -78,14 +77,17 @@ class ISIC(torch.utils.data.Dataset):
         image = Image.open(image_path)
         seg = Image.open(seg_path)
         if self.data_type == 'test':
-            Y = self.transform_crop_resize(seg)
+            seg = transforms.functional.crop(seg,36,114,seg.size[1]-36-37,seg.size[0]-114-102)
+            Y = self.transform_resize(seg)
         else:
             Y = self.transform(seg)
-        X = self.transform_crop_resize(image)
+        X = transforms.functional.crop(image,36,114,seg.size[1]-36-37,seg.size[0]-114-102)
+        X = self.transform_resize(image)
         return X, Y
 
 # Load data
-dataset = ISIC( transform_crop_resize=transform_crop_resize, transform=transform, data_type=data_type, data_path=data_path)
+dataset = ISIC( transform_resize=transform_resize, transform=transform, data_type=data_type, data_path=data_path)
+dataset.__getitem__(0)
 torch.save(dataset,'./datasets/'+name+'-datatype_'+data_type+'.pt')
 print('Saved train dataset')
 
