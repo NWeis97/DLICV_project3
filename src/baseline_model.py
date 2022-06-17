@@ -24,9 +24,8 @@ from torch.utils.data import random_split
 seed = 1234
 torch.manual_seed(seed)
 
-
-### DATA
-###
+# Define figure size
+plt.rcParams['figure.figsize'] = [22, 7]
 
 # Select cuda
 device = torch.device('cuda' if torch.cuda.is_available() else 'cpu')
@@ -110,6 +109,7 @@ def train(model, opt, loss_fn, epochs, train_loader, test_loader):
             plt.axis('off')
         plt.suptitle('%d / %d - loss: %f' % (epoch+1, epochs, avg_loss))
         plt.show()
+        plt.savefig('results/epoch'+str(epoch)+'.png')
 
 # Predict model
 def predict(model, data):
