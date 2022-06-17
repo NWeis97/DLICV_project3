@@ -82,6 +82,7 @@ class ISIC(torch.utils.data.Dataset):
         image = Image.open(image_path)
         seg = Image.open(seg_path)
         if self.data_type == 'test':
+            seg = Image.open(seg_path).convert('L')
             seg = transforms.functional.crop(seg,36,114,seg.size[1]-36-37,seg.size[0]-114-102)
             Y = self.transform_resize(seg)
         else:

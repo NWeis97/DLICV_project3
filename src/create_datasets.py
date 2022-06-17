@@ -12,8 +12,8 @@ import torch
 torch.manual_seed(1234)
 
 # Set path of data you want to load
-name = 'train_style0'
-data_type = 'val'
+name = 'test_style0'
+data_type = 'test'
 crop_x = True
 
 data_path = './data/' + name
@@ -79,6 +79,7 @@ class ISIC(torch.utils.data.Dataset):
         image = Image.open(image_path)
         seg = Image.open(seg_path)
         if self.data_type == 'test':
+            seg = Image.open(seg_path).convert('L')
             seg = transforms.functional.crop(seg,36,114,seg.size[1]-36-37,seg.size[0]-114-102)
             Y = self.transform_resize(seg)
         else:
