@@ -82,8 +82,11 @@ class ISIC(torch.utils.data.Dataset):
         image = Image.open(image_path)
         seg = Image.open(seg_path)
         if self.data_type == 'test':
+            seg = Image.open(seg_path).convert('L')
             seg = transforms.functional.crop(seg,36,114,seg.size[1]-36-37,seg.size[0]-114-102)
             Y = self.transform_resize(seg)
+            Y[Y>0.5] = 1
+            Y[Y<=0.5] = 0
         else:
             Y = self.transform(seg)
         
@@ -94,10 +97,9 @@ class ISIC(torch.utils.data.Dataset):
             X = self.transform(image)
 
         return X, Y
-
 # Define loss
 def bce_loss(y_real, y_pred):
-    y_pred = torch.clamp(y_pred,min=-1e3,max=1e3)
+    y_pred = torch.clamp(y_pred,min=-80,max=80)
     return torch.mean(y_pred - y_real*y_pred +
                       torch.where(y_pred>37, torch.exp(-y_pred), torch.zeros_like(y_pred)) +
                       torch.where((y_pred<=37) & (y_pred >-18), torch.log1p(torch.exp(-y_pred)), torch.zeros_like(y_pred)) +
@@ -140,10 +142,10 @@ def train(model, opt, loss_fn, epochs, train_loader, test_loader):
 
         # show intermediate results
         model.eval()  # testing mode
-        Y_hat = torch.sigmoid(model(X_test.to(device))).detach().cpu()
-        print('Y hat shape:',Y_hat.shape)
-        print('Y test shape:',Y_test.shape)
-        pdb.set_trace()
+        Y_hat = torch.round(torch.sigmoid(model(X_test.to(device))).detach().cpu())
+        #print('Y hat shape:',Y_hat.shape)
+        #print('Y test shape:',Y_test.shape)
+        
         size_style0_pred.append(torch.sum(torch.sum(Y_hat,dim=2),dim=2))
         size_style0_true.append(torch.sum(torch.sum(Y_test,dim=2),dim=2))
         clear_output(wait=True)
@@ -236,8 +238,8 @@ test_loader = DataLoader(test_dataset, batch_size=16, shuffle=False, num_workers
 
 ## Train 
 torch.cuda.empty_cache()
-size_style0_pred, size_style0_true =train(model, optim.Adam(model.parameters()), bce_loss, 20, train_loader, test_loader)
+size_style0_pred, size_style0_true =train(model, optim.Adam(model.parameters()), bce_loss, 50, train_loader, test_loader)
 
 #pdb.set_trace()
-print(size_style0_pred[0])
-print(size_style0_true[0])
+print(size_style0_pred[-1])
+print(size_style0_true[-1])
