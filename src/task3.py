@@ -18,6 +18,24 @@ from IPython.display import clear_output
 from torchviz import make_dot
 import pdb
 from torch.utils.data import random_split
+from torchmetrics import JaccardIndex
+
+SMOOTH = 1e-6
+
+def iou_pytorch(outputs: torch.Tensor, labels: torch.Tensor):
+    # You can comment out this line if you are passing tensors of equal shape
+    # But if you are passing output from UNet or something it will most probably
+    # be with the BATCH x 1 x H x W shape
+    outputs = outputs.squeeze(1)  # BATCH x 1 x H x W => BATCH x H x W
+    
+    intersection = (outputs & labels).float().sum((1, 2))  # Will be zero if Truth=0 or Prediction=0
+    union = (outputs | labels).float().sum((1, 2))         # Will be zzero if both are 0
+    
+    iou = (intersection + SMOOTH) / (union + SMOOTH)  # We smooth our devision to avoid 0/0
+    
+    thresholded = torch.clamp(20 * (iou - 0.5), 0, 10).ceil() / 10  # This is equal to comparing with thresolds
+    
+    return thresholded  # Or thresholded.mean() if you are interested in average across the batch
 
 
 # Set seed
@@ -108,8 +126,9 @@ def bce_loss(y_real, y_pred):
                       )
 
 
-size_style0_pred = []
-size_style0_true = []
+size_pred = []
+size_true = []
+IoU = []
 
 
 # Train procedure as function
@@ -143,11 +162,10 @@ def train(model, opt, loss_fn, epochs, train_loader, test_loader):
         # show intermediate results
         model.eval()  # testing mode
         Y_hat = torch.round(torch.sigmoid(model(X_test.to(device))).detach().cpu())
-        #print('Y hat shape:',Y_hat.shape)
-        #print('Y test shape:',Y_test.shape)
         
-        size_style0_pred.append(torch.sum(torch.sum(Y_hat,dim=2),dim=2).numpy().astype(int))
-        size_style0_true.append(torch.sum(torch.sum(Y_test,dim=2),dim=2).numpy().astype(int))
+        #size_pred.append(torch.sum(torch.sum(Y_hat,dim=2),dim=2).flatten().numpy().astype(int))
+        #size_true.append(torch.sum(torch.sum(Y_test,dim=2),dim=2).flatten().numpy().astype(int))
+
         clear_output(wait=True)
         for k in range(6):
             plt.subplot(2, 6, k+1)
@@ -162,7 +180,22 @@ def train(model, opt, loss_fn, epochs, train_loader, test_loader):
         plt.suptitle('%d / %d - loss: %f' % (epoch+1, epochs, avg_loss))
         plt.show()
         #plt.savefig('results/epoch'+str(epoch)+'.png')
-    return size_style0_pred, size_style0_true
+
+    for X_test, Y_test in test_loader:
+        # show intermediate results
+        model.eval()  # testing mode
+        Y_hat = torch.round(torch.sigmoid(model(X_test.to(device))).detach().cpu())
+        
+        size_pred.append(torch.sum(torch.sum(Y_hat,dim=2),dim=2).flatten().numpy().astype(int))
+        size_true.append(torch.sum(torch.sum(Y_test,dim=2),dim=2).flatten().numpy().astype(int))
+
+        for i in range(Y_test.size()[0]):
+            intersection = torch.logical_and(Y_test[i,:,:,:], Y_hat[i,:,:,:])
+            union = torch.logical_or(Y_test[i,:,:,:], Y_hat[i,:,:,:])
+            iou_score = torch.sum(intersection) / torch.sum(union) 
+            IoU.append(iou_score.flatten().numpy())
+    
+    return size_pred, size_true,IoU
 
 # Predict model
 def predict(model, data):
@@ -227,29 +260,38 @@ model = UNet().to(device)
 make_dot(model(torch.randn(20, 3, 256, 256).cuda()), params=dict(model.named_parameters()))
 
 # Load training data
-train_dataset = torch.load('datasets/train_style1-datatype_train.pt')
-val_dataset = torch.load('datasets/train_style1-datatype_val.pt')
+train_dataset = torch.load('datasets/train_style0-datatype_train.pt')
+val_dataset = torch.load('datasets/train_style0-datatype_val.pt')
 train_loader = DataLoader(train_dataset, batch_size=16, shuffle=True, num_workers=0)
 val_loader = DataLoader(val_dataset, batch_size=16, shuffle=True, num_workers=0)
 
 # Load test data
-test_dataset = torch.load('datasets/test_style1-datatype_test.pt')
+test_dataset = torch.load('datasets/test_style0-datatype_test.pt')
 test_loader = DataLoader(test_dataset, batch_size=16, shuffle=False, num_workers=0)
 
 ## Train 
 torch.cuda.empty_cache()
-size_style0_pred, size_style0_true =train(model, optim.Adam(model.parameters()), bce_loss, 50, train_loader, test_loader)
+size_pred, size_true,IoU =train(model, optim.Adam(model.parameters()), bce_loss, 50, train_loader, test_loader)
 
-#pdb.set_trace()
 c = 0
-for i in range(len(size_style0_pred)):
-    for j in range(len(size_style0_pred[i])):
-        if size_style0_pred[i][j] > size_style0_true[i][j]:
+diff = []
+for i in range(len(size_pred)):
+    for j in range(len(size_pred[i])):
+        if size_pred[i][j] > size_true[i][j]:
             c += 1
+        diff.append(size_pred[i][j] - size_true[i][j])
 
 
-print('How many times did our prediction overestimate the annotation? -',c,' out of ',len(size_style0_pred)*len(size_style0_true[0]))
+print('How many times did our prediction overestimate the annotation? -',c,' out of ',len(size_pred)*len(size_true[0]))
 
+import csv
 
-#print('Predicted:',size_style0_pred[-1])
-#print('True:',size_style0_true[-1])
+with open("results/style0_pred.csv", "w") as f:
+    wr = csv.writer(f)
+    wr.writerows(size_pred)
+with open("results/style0_true.csv", "w") as f:
+    wr = csv.writer(f)
+    wr.writerows(size_true)
+with open("results/style0_iou.csv", "w") as f:
+    wr = csv.writer(f)
+    wr.writerows(IoU)
