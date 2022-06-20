@@ -27,7 +27,7 @@ transform = transforms.Compose([transforms.Resize((size, size)),
 class ISIC_task4(torch.utils.data.Dataset):
     def __init__(self, transform, data_path):
         'Initialization'
-        self.transform = transform
+        self.transform_resize = transform
         self.image_paths = []
         self.seg_paths_coarse = []
         self.seg_paths_granular = []
