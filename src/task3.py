@@ -146,8 +146,8 @@ def train(model, opt, loss_fn, epochs, train_loader, test_loader):
         #print('Y hat shape:',Y_hat.shape)
         #print('Y test shape:',Y_test.shape)
         
-        size_style0_pred.append(torch.sum(torch.sum(Y_hat,dim=2),dim=2))
-        size_style0_true.append(torch.sum(torch.sum(Y_test,dim=2),dim=2))
+        size_style0_pred.append(torch.sum(torch.sum(Y_hat,dim=2),dim=2).numpy().astype(int))
+        size_style0_true.append(torch.sum(torch.sum(Y_test,dim=2),dim=2).numpy().astype(int))
         clear_output(wait=True)
         for k in range(6):
             plt.subplot(2, 6, k+1)
@@ -161,7 +161,7 @@ def train(model, opt, loss_fn, epochs, train_loader, test_loader):
             plt.axis('off')
         plt.suptitle('%d / %d - loss: %f' % (epoch+1, epochs, avg_loss))
         plt.show()
-        plt.savefig('results/epoch'+str(epoch)+'.png')
+        #plt.savefig('results/epoch'+str(epoch)+'.png')
     return size_style0_pred, size_style0_true
 
 # Predict model
@@ -227,13 +227,13 @@ model = UNet().to(device)
 make_dot(model(torch.randn(20, 3, 256, 256).cuda()), params=dict(model.named_parameters()))
 
 # Load training data
-train_dataset = torch.load('datasets/train_style0-datatype_train.pt')
-val_dataset = torch.load('datasets/train_style0-datatype_val.pt')
+train_dataset = torch.load('datasets/train_style1-datatype_train.pt')
+val_dataset = torch.load('datasets/train_style1-datatype_val.pt')
 train_loader = DataLoader(train_dataset, batch_size=16, shuffle=True, num_workers=0)
 val_loader = DataLoader(val_dataset, batch_size=16, shuffle=True, num_workers=0)
 
 # Load test data
-test_dataset = torch.load('datasets/test_style0-datatype_test.pt')
+test_dataset = torch.load('datasets/test_style1-datatype_test.pt')
 test_loader = DataLoader(test_dataset, batch_size=16, shuffle=False, num_workers=0)
 
 ## Train 
@@ -241,5 +241,15 @@ torch.cuda.empty_cache()
 size_style0_pred, size_style0_true =train(model, optim.Adam(model.parameters()), bce_loss, 50, train_loader, test_loader)
 
 #pdb.set_trace()
-print(size_style0_pred[-1])
-print(size_style0_true[-1])
+c = 0
+for i in range(len(size_style0_pred)):
+    for j in range(len(size_style0_pred[i])):
+        if size_style0_pred[i][j] > size_style0_true[i][j]:
+            c += 1
+
+
+print('How many times did our prediction overestimate the annotation? -',c,' out of ',len(size_style0_pred)*len(size_style0_true[0]))
+
+
+#print('Predicted:',size_style0_pred[-1])
+#print('True:',size_style0_true[-1])
